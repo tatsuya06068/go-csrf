@@ -17,6 +17,7 @@ message GenerateTokenResponse {
 
 message ValidateTokenRequest {
   string token = 1;
+  string refer = 2;
 }
 
 message ValidateTokenResponse {

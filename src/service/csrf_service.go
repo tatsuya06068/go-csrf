@@ -40,6 +40,20 @@ func (s *CSRFServiceServer) GenerateToken(ctx context.Context, req *pb.Empty) (*
 		return nil, status.Errorf(codes.Internal, "Failed to save token to Redis: %v", err)
 	}
 
+	// Referer validation
+	if req.Referer != "" {
+		isTrusted := false
+		for _, domain := range s.trustedDomains {
+			if strings.HasPrefix(req.Referer, domain) {
+				isTrusted = true
+				break
+			}
+		}
+		if !isTrusted {
+			return &pb.ValidateTokenResponse{IsValid: false}, nil
+		}
+	}
+
 	return &pb.GenerateTokenResponse{
 		Token: tokenString,
 	}, nil

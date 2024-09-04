@@ -28,6 +28,7 @@ func (m *MockRedisClient) Get(ctx context.Context, key string) *redis.StringCmd 
 type TestCase struct {
 	name          string
 	token         string
+	referer        string
 	value         string
 	expectedValid bool
 }
@@ -58,12 +59,14 @@ func TestValidateToken(t *testing.T) {
 			name:          "Valid token",
 			token:         "valid-token",
 			value:         "valid",
+			referer:       "https://untrusted-domain.com",
 			expectedValid: true,
 		},
 		{
 			name:          "Invalid token",
 			token:         "invalid-token",
 			value:         "invalid",
+			referer:       "https://untrusted-domain.com",
 			expectedValid: false,
 		},
 	}
@@ -79,7 +82,12 @@ func TestValidateToken(t *testing.T) {
 			secretKey := []byte("your-secret-key-must-be-32-bytes-long!")
 			service := NewCSRFServiceServer(mock, secretKey)
 
-			resp, err := service.ValidateToken(context.Background(), &pb.ValidateTokenRequest{Token: tc.token})
+			trustedDomains := []string{"https://trusted-domain.com"}
+			resp, err := service.ValidateToken(context.Background(), &pb.ValidateTokenRequest{
+				Token: tc.token,
+				Referer: tc.referer,
+			})
+			
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
