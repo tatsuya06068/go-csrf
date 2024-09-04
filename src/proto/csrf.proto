@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package csrf;
+
+option go_package = "csrf/proto;csrf";
+
+service CSRFService {
+  rpc GenerateToken (Empty) returns (GenerateTokenResponse);
+  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message Empty {}
+
+message GenerateTokenResponse {
+  string token = 1;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool is_valid = 1;
+}
