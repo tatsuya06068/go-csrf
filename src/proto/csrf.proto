@@ -2,24 +2,49 @@ syntax = "proto3";
 
 package csrf;
 
-option go_package = "csrf/proto;csrf";
+option go_package = "path/to/your/package/csrf"; // 生成されたGoコードのパッケージ名に置き換えてください
+
+import "google/api/annotations.proto"; // grpc-gatewayのannotations
 
 service CSRFService {
-  rpc GenerateToken (Empty) returns (GenerateTokenResponse);
-  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+  // CSRFトークンを生成するメソッド
+  rpc GenerateToken(GenerateTokenRequest) returns (GenerateTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/generate-token"
+      body: "*"
+    };
+  }
+  
+  // CSRFトークンを検証するメソッド
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/validate-token"
+      body: "*"
+      additional_bindings {
+        post: "/v1/validate-token"
+        body: "*"
+      }
+    };
+  }
 }
 
-message Empty {}
+// CSRFトークン生成リクエスト
+message GenerateTokenRequest {
+  string user_id = 1;  // ユーザーID（オプション）
+}
 
+// CSRFトークン生成レスポンス
 message GenerateTokenResponse {
-  string token = 1;
+  string token = 1;  // 生成されたCSRFトークン
 }
 
+// CSRFトークン検証リクエスト
 message ValidateTokenRequest {
-  string token = 1;
-  string refer = 2;
+  string token = 1;   // 検証対象のCSRFトークン
+  string referer = 2; // リファラーURL
 }
 
+// CSRFトークン検証レスポンス
 message ValidateTokenResponse {
-  bool is_valid = 1;
+  bool is_valid = 1;  // トークンが有効かどうか
 }
