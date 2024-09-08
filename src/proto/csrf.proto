@@ -6,45 +6,42 @@ option go_package = "path/to/your/package/csrf"; // 生成されたGoコード�
 
 import "google/api/annotations.proto"; // grpc-gatewayのannotations
 
-service CSRFService {
-  // CSRFトークンを生成するメソッド
+// CsrfServiceは、トークンの発行と認証を提供します
+service CsrfService {
+  // トークンを発行する
   rpc GenerateToken(GenerateTokenRequest) returns (GenerateTokenResponse) {
     option (google.api.http) = {
-      post: "/v1/generate-token"
+      post: "/v1/token"
       body: "*"
     };
   }
-  
-  // CSRFトークンを検証するメソッド
+
+  // トークンを認証する
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
     option (google.api.http) = {
-      post: "/v1/validate-token"
+      post: "/v1/validate"
       body: "*"
-      additional_bindings {
-        post: "/v1/validate-token"
-        body: "*"
-      }
     };
   }
 }
 
-// CSRFトークン生成リクエスト
+// トークン発行リクエスト
 message GenerateTokenRequest {
-  string user_id = 1;  // ユーザーID（オプション）
+  string session_id = 1;
 }
 
-// CSRFトークン生成レスポンス
+// トークン発行レスポンス
 message GenerateTokenResponse {
-  string token = 1;  // 生成されたCSRFトークン
+  string csrf_token = 1;
 }
 
-// CSRFトークン検証リクエスト
+// トークン認証リクエスト
 message ValidateTokenRequest {
-  string token = 1;   // 検証対象のCSRFトークン
-  string referer = 2; // リファラーURL
+  string csrf_token = 1;
+  string session_id = 2;
 }
 
-// CSRFトークン検証レスポンス
+// トークン認証レスポンス
 message ValidateTokenResponse {
-  bool is_valid = 1;  // トークンが有効かどうか
+  bool is_valid = 1;
 }

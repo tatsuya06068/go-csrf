@@ -1,58 +1,27 @@
 package csrf
 
 import (
-	"crypto/rand"
-	"encoding/base64"
-	"errors"
-	"fmt"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 )
 
-type Token struct {
-	Value     string
-	ExpiresAt time.Time
+type CsrfToken struct {
+	Token     string
+	SessionID string
+	CreatedAt time.Time
 }
 
-// CSRFTokenService is the domain service for generating and validating CSRF tokens.
-type CSRFTokenService struct {
-	secretKey string
-}
+// 新しいCSRFトークンを生成
+func NewCsrfToken(sessionID string, secretKey []byte) (*CsrfToken, error) {
+	h := hmac.New(sha256.New, secretKey)
+	h.Write([]byte(sessionID))
+	token := hex.EncodeToString(h.Sum(nil))
 
-func NewCSRFTokenService(secretKey string) *CSRFTokenService {
-	return &CSRFTokenService{
-		secretKey: secretKey,
-	}
-}
-
-// GenerateToken generates a new CSRF token.
-func (s *CSRFTokenService) GenerateToken() (Token, error) {
-	tokenBytes := make([]byte, 32)
-	_, err := rand.Read(tokenBytes)
-	if err != nil {
-		return Token{}, err
-	}
-
-	token := base64.StdEncoding.EncodeToString(tokenBytes)
-	expiresAt := time.Now().Add(24 * time.Hour) // トークンの有効期限
-
-	return Token{
-		Value:     token,
-		ExpiresAt: expiresAt,
+	return &CsrfToken{
+		Token:     token,
+		SessionID: sessionID,
+		CreatedAt: time.Now(),
 	}, nil
-}
-
-// ValidateToken checks if the provided token is valid.
-func (s *CSRFTokenService) ValidateToken(providedToken string, storedToken Token) error {
-	if providedToken != storedToken.Value {
-		return errors.New("invalid CSRF token")
-	}
-	if time.Now().After(storedToken.ExpiresAt) {
-		return errors.New("CSRF token has expired")
-	}
-	return nil
-}
-
-type CSRFService interface {
-	GenerateToken() (*CSRFToken, error)
-	ValidateToken(token string) error
 }

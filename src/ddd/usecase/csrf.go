@@ -1,49 +1,39 @@
-package csrf
+package usecase
 
 import (
-	"context"
-	"time"
-
-	"example.com/project/domain/csrf"
-	"example.com/project/infra/redis"
+	csrf "csrf/ddd/domain"
+	"errors"
 )
 
-type CSRFUsecase struct {
-	tokenService *csrf.CSRFTokenService
-	redisClient  redis.RedisClient
+type CsrfTokenRepository interface {
+	Save(token *csrf.CsrfToken) error
+	Find(sessionID string) (string, error)
 }
 
-func NewCSRFUsecase(tokenService *csrf.CSRFTokenService, redisClient redis.RedisClient) *CSRFUsecase {
-	return &CSRFUsecase{
-		tokenService: tokenService,
-		redisClient:  redisClient,
-	}
+// CSRFトークン発行ユースケース
+type CSRFTokenUseCase struct {
+	Repository CsrfTokenRepository
 }
 
-func (u *CSRFUsecase) GenerateToken(ctx context.Context, userID string) (string, error) {
-	token, err := u.tokenService.GenerateToken()
+func (cc *CSRFTokenUseCase) Generate(sessionID string, secretId string) (*csrf.CsrfToken, error) {
+	token, err := csrf.NewCsrfToken(sessionID, []byte(secretId))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	// Redisに保存
-	err = u.redisClient.Set(ctx, userID, token.Value, 24*time.Hour)
-	if err != nil {
-		return "", err
+	if err := cc.Repository.Save(token); err != nil {
+		return nil, err
 	}
-
-	return token.Value, nil
+	return token, nil
 }
 
-func (u *CSRFUsecase) ValidateToken(ctx context.Context, userID, providedToken string) error {
-	// Redisからトークンを取得
-	storedTokenValue, err := u.redisClient.Get(ctx, userID)
+func (cc *CSRFTokenUseCase) Validate(token string, sessionID string) error {
+	savedToken, err := cc.Repository.Find(sessionID)
 	if err != nil {
 		return err
 	}
 
-	storedToken := csrf.Token{Value: storedTokenValue, ExpiresAt: time.Now().Add(24 * time.Hour)}
-
-	// トークンを検証
-	return u.tokenService.ValidateToken(providedToken, storedToken)
+	if savedToken != token {
+		return errors.New("invalid CSRF token")
+	}
+	return nil
 }
