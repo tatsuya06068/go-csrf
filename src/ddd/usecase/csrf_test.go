@@ -149,3 +149,86 @@ func TestValidateToken(t *testing.T) {
 		})
 	}
 }
+
+
+
+package usecase
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"yourproject/domain"
+	"yourproject/repository"
+)
+
+type ValidateTestCase struct {
+	name            string
+	token           string
+	sessionID       string
+	mockFindError   error
+	savedToken      string
+	expectedError   error
+}
+
+func TestCSRFTokenInteractor_Validate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// モックのリポジトリを作成
+	mockRepository := repository.NewMockICsrfTokenRepositry(ctrl)
+
+	// インタラクタを初期化
+	interactor := &CSRFTokenInteractor{
+		repository: mockRepository,
+	}
+
+	// テストケースの定義
+	testCases := []ValidateTestCase{
+		{
+			name:          "Success",
+			token:         "test_token",
+			sessionID:     "test_session",
+			savedToken:    "test_token",
+			expectedError: nil,
+		},
+		{
+			name:          "TokenMismatch",
+			token:         "test_token",
+			sessionID:     "test_session",
+			savedToken:    "different_token",
+			expectedError: errors.New("invalid CSRF token"),
+		},
+		{
+			name:          "RepositoryError",
+			token:         "test_token",
+			sessionID:     "test_session",
+			mockFindError: errors.New("repository error"),
+			expectedError: errors.New("repository error"),
+		},
+	}
+
+	// 各テストケースを実行
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックの動作を設定
+			mockRepository.EXPECT().Find(gomock.Any(), tc.sessionID).Return(tc.savedToken, tc.mockFindError).Times(1)
+
+			// 実際のテスト実行
+			err := interactor.Validate(context.Background(), tc.token, tc.sessionID)
+
+			// エラーの検証
+			if err != nil {
+				if tc.expectedError == nil {
+					t.Fatalf("expected no error, got %v", err)
+				} else if err.Error() != tc.expectedError.Error() {
+					t.Fatalf("expected error %v, got %v", tc.expectedError, err)
+				}
+			} else if tc.expectedError != nil {
+				t.Fatalf("expected error %v, got none", tc.expectedError)
+			}
+		})
+	}
+}
